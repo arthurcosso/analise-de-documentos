@@ -2,9 +2,16 @@ import sqlite3
 import numpy as np
 import pickle
 from datetime import datetime
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 import os  # <-- Import 'os' (já estava presente)
+
+# Tentativa de importar TensorFlow/Keras; se não disponível, usamos fallback
+try:
+    from tensorflow.keras.models import load_model
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+    _TF_AVAILABLE = True
+except Exception as _e:
+    print(f"[AVISO] TensorFlow/Keras indisponível para a API ({_e}). Usando classificador heurístico temporário.")
+    _TF_AVAILABLE = False
 
 # --- Configuração do Modelo de IA (Carregamento) ---
 
@@ -21,14 +28,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, 'text_classifier_model.keras')
 TOKENIZER_PATH = os.path.join(BASE_DIR, 'tokenizer.pkl')
 
-# Carrega o modelo e o tokenizer usando os caminhos absolutos
-print(f"Carregando modelo de IA Keras de: {MODEL_PATH}")
-MODELO_IA = load_model(MODEL_PATH)
-
-print(f"Carregando tokenizer de: {TOKENIZER_PATH}")
-with open(TOKENIZER_PATH, 'rb') as handle:
-    TOKENIZER = pickle.load(handle)
-print("IA pronta.")
+# Carrega o modelo/tokenizer se TensorFlow estiver disponível e arquivos existirem
+MODELO_IA = None
+TOKENIZER = None
+if _TF_AVAILABLE and os.path.exists(MODEL_PATH) and os.path.exists(TOKENIZER_PATH):
+    print(f"Carregando modelo de IA Keras de: {MODEL_PATH}")
+    MODELO_IA = load_model(MODEL_PATH)
+    print(f"Carregando tokenizer de: {TOKENIZER_PATH}")
+    with open(TOKENIZER_PATH, 'rb') as handle:
+        TOKENIZER = pickle.load(handle)
+    print("IA pronta.")
+else:
+    print("[AVISO] Modelo/tokenizer não encontrados ou TF indisponível. Ativando modo heurístico.")
 # --- [FIM DA CORREÇÃO] ---
 
 
@@ -53,30 +64,26 @@ def setup_database():
 # --- Tópico A: Nível de Sigilo (PLN / Rede Neural) ---
 
 def classify_with_neural_network(document_text):
-    """
-    [ESTA É A INTEGRAÇÃO]
-    Usa o modelo Keras carregado para classificar o texto.
-    """
-    try:
-        # 1. Pre-processar o texto (igual ao script de treino)
-        text_list = [document_text] # Modelo espera uma lista
-        sequences = TOKENIZER.texts_to_sequences(text_list)
-        padded_data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LEN)
+    """Classifica o texto usando o modelo Keras, se disponível; caso contrário, usa heurística simples."""
+    if MODELO_IA is not None and TOKENIZER is not None and _TF_AVAILABLE:
+        try:
+            text_list = [document_text]
+            sequences = TOKENIZER.texts_to_sequences(text_list)
+            padded_data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LEN)
+            prediction = MODELO_IA.predict(padded_data, verbose=0)
+            predicted_class_index = np.argmax(prediction[0])
+            return LABEL_MAP.get(predicted_class_index, "ERRO")
+        except Exception as e:
+            print(f"Erro ao classificar com IA: {e}")
+            # fallback abaixo
 
-        # 2. Fazer a predição
-        prediction = MODELO_IA.predict(padded_data, verbose=0)
-
-        # 3. Interpretar o resultado
-        # prediction[0] será algo como [0.9, 0.05, 0.05]
-        # np.argmax encontra o índice do maior valor (neste caso, 0)
-        predicted_class_index = np.argmax(prediction[0])
-
-        # 4. Mapear o índice de volta para o rótulo de texto
-        return LABEL_MAP.get(predicted_class_index, "ERRO")
-
-    except Exception as e:
-        print(f"Erro ao classificar com IA: {e}")
-        return "ERRO"
+    # Fallback heurístico: regras simples por palavras-chave
+    text = (document_text or '').lower()
+    if any(k in text for k in ["segredo de justiça", "sigiloso", "confidencial", "dados sensíveis"]):
+        return "CONFIDENCIAL"
+    if any(k in text for k in ["interno", "rascunho", "uso interno", "restrito"]):
+        return "INTERNO"
+    return "PUBLICO"
 
 
 # --- Tópico B: Análise de Comportamento (UBA / SQLite) ---
