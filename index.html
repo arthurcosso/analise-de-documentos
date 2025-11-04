@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste do Agente DLP/UBA</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 25px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: 600;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+        input[type="text"], textarea {
+            width: 98%;
+            padding: 12px;
+            border: 1px solid #dcdcdc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 150px;
+            font-family: "Courier New", Courier, monospace;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result-wrapper {
+            margin-top: 25px;
+        }
+        #result, #error {
+            padding: 15px;
+            border-radius: 5px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        #result {
+            background-color: #282c34; /* Fundo escuro */
+            color: #61dafb; /* Cor de destaque (ciano) */
+            font-family: "Courier New", Courier, monospace;
+        }
+        #error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #c62828;
+            display: none; /* Começa escondido */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Interface de Teste - Agente DLP/UBA</h1>
+        <p>Esta página enviará os dados para o seu servidor Flask (backend) na porta 5000.</p>
+
+        <form id="document-form">
+            <label for="username">Nome do Usuário:</label>
+            <select id="username" name="username" required>
+                <option value="estagiario">estagiario</option>
+                <option value="advogado_senior">advogado_senior</option>
+            </select>
+
+            <label for="file">Arquivo (.txt):</label>
+            <input type="file" id="file" name="file" accept=".txt" required>
+
+            <button type="submit">Processar Documento</button>
+        </form>
+
+        <div id="result-wrapper">
+            <h2>Resultado da Análise</h2>
+            <pre id="result">Aguardando envio...</pre>
+            <div id="error"></div>
+        </div>
+    </div>
+
+    <script>
+        // Adiciona um "listener" para o evento de submit do formulário
+        document.getElementById('document-form').addEventListener('submit', async function(event) {
+            // Impede que a página recarregue
+            event.preventDefault();
+
+            // Pega os elementos do DOM
+            const username = document.getElementById('username').value;
+            const fileInput = document.getElementById('file');
+            const resultElement = document.getElementById('result');
+            const errorElement = document.getElementById('error');
+
+            // Limpa resultados anteriores
+            resultElement.textContent = 'Processando...';
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+
+            // 1. Monta o payload em FormData (API espera multipart/form-data)
+            const formData = new FormData();
+            formData.append('username', username);
+            if (fileInput.files.length === 0) {
+                errorElement.textContent = 'Selecione um arquivo .txt.';
+                errorElement.style.display = 'block';
+                resultElement.textContent = 'Falha no processamento.';
+                return;
+            }
+            formData.append('file', fileInput.files[0]);
+
+            // 2. Define a URL da sua API (namespace + rota do backend existente)
+            const apiUrl = 'http://127.0.0.1:5000/api/processing/process_document';
+
+            try {
+                // 3. Faz a requisição POST usando 'fetch'
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // 4. Converte a resposta da API de texto JSON para objeto JS
+                const data = await response.json();
+
+                // 5. Verifica se a API retornou um erro (ex: 400, 500)
+                if (!response.ok) {
+                    // Se sim, joga um erro para ser pego pelo 'catch'
+                    // A mensagem de erro virá do JSON da API (ex: {"error": "..."})
+                    throw new Error(data.error || `Erro HTTP: ${response.status}`);
+                }
+
+                // 6. SUCESSO: Formata o JSON de resposta e exibe na tela
+                resultElement.textContent = JSON.stringify(data, null, 2); // 'null, 2' formata o JSON bonitinho
+
+            } catch (error) {
+                // 7. ERRO: Exibe o erro de rede ou o erro da API
+                console.error('Erro ao processar documento:', error);
+                resultElement.textContent = 'Falha no processamento.';
+                errorElement.textContent = error.message;
+                errorElement.style.display = 'block';
+            }
+        });
+    </script>
+
+</body>
+</html>
