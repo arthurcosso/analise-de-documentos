@@ -9,7 +9,10 @@ import os
 # --- 1. Dados de Treinamento (Carregados de Ficheiros) ---
 print("--- Iniciando Treinamento do Modelo (Lendo Ficheiros) ---")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TRAINING_DATA_DIR = os.path.join(BASE_DIR, 'training_data')
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+os.makedirs(MODELS_DIR, exist_ok=True)
 
 texts = []
 labels = []
@@ -25,10 +28,10 @@ files_to_load = {
 print("Carregando dados dos ficheiros .txt...")
 for filename, label in files_to_load.items():
     # Crie o caminho completo para o arquivo de dados
-    file_path = os.path.join(BASE_DIR, filename)
+    file_path = os.path.join(TRAINING_DATA_DIR, filename)
 
     try:
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             # Lê o ficheiro linha por linha
             for line in f:
                 line = line.strip() # Remove espaços em branco e quebras de linha
@@ -55,10 +58,10 @@ tokenizer = Tokenizer(num_words=1000, oov_token="<UNK>")
 tokenizer.fit_on_texts(texts)
 
 # Crie o caminho de salvamento correto para o tokenizer
-TOKENIZER_PATH = os.path.join(BASE_DIR, 'tokenizer.pkl')
+TOKENIZER_PATH = os.path.join(MODELS_DIR, 'tokenizer.pkl')
 
 # Salva o tokenizer para usá-lo no script principal
-with open('TOKENIZER_PATH', 'wb') as handle:
+with open(TOKENIZER_PATH, 'wb') as handle:
     pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
     print(f"Tokenizer salvo em {TOKENIZER_PATH}")
 
@@ -93,7 +96,7 @@ print("Treinamento concluído.")
 
 # --- 5. Salvar o Modelo ---
 # Crie o caminho de salvamento correto para o modelo
-MODEL_PATH = os.path.join(BASE_DIR, 'text_classifier_model.keras')
+MODEL_PATH = os.path.join(MODELS_DIR, 'text_classifier_model.keras')
 
 model.save(MODEL_PATH)
 print(f"Modelo salvo em '{MODEL_PATH}'")

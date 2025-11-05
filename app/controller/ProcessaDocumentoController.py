@@ -27,8 +27,11 @@ except Exception as e:
 # --- Inicialização do Agente ---
 # (Como recomendado anteriormente, isso deveria estar no run.py)
 # Mas, mantendo como está no seu arquivo:
-if os.path.exists('../legal_dlp_uba.db'):
-    os.remove('../legal_dlp_uba.db')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+db_path = os.path.join(DATA_DIR, 'legal_dlp_uba.db')
+if os.path.exists(db_path):
+    os.remove(db_path)
 setup_database()
 print("Banco de dados 'legal_dlp_uba.db' inicializado.")
 print("Servidor de API pronto para receber requisições.")

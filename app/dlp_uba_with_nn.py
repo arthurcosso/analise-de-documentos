@@ -21,12 +21,14 @@ LABEL_MAP = {0: "PUBLICO", 1: "INTERNO", 2: "CONFIDENCIAL"}
 MAX_SEQUENCE_LEN = 20
 
 # --- [INÍCIO DA CORREÇÃO] ---
-# Pega o diretório ONDE ESTE SCRIPT (dlp_uba_with_nn.py) está
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Pega o diretório raiz do projeto
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Cria os caminhos completos para os arquivos que estão NA MESMA PASTA
-MODEL_PATH = os.path.join(BASE_DIR, 'text_classifier_model.keras')
-TOKENIZER_PATH = os.path.join(BASE_DIR, 'tokenizer.pkl')
+# Cria os caminhos completos para os arquivos de modelos
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+MODEL_PATH = os.path.join(MODELS_DIR, 'text_classifier_model.keras')
+TOKENIZER_PATH = os.path.join(MODELS_DIR, 'tokenizer.pkl')
 
 # Carrega o modelo/tokenizer se TensorFlow estiver disponível e arquivos existirem
 MODELO_IA = None
@@ -48,7 +50,10 @@ else:
 
 def setup_database():
     """Cria o banco de dados e as tabelas necessárias."""
-    conn = sqlite3.connect('legal_dlp_uba.db')
+    # Garante que o diretório data existe
+    os.makedirs(DATA_DIR, exist_ok=True)
+    db_path = os.path.join(DATA_DIR, 'legal_dlp_uba.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
                    CREATE TABLE IF NOT EXISTS classified_docs
@@ -121,7 +126,8 @@ def log_access_for_uba(username, doc_hash, classification, action="read"):
     Registra o acesso no SQLite para que o agente UBA possa analisá-lo.
     MODIFICADO: Agora retorna um dicionário com o resultado da análise.
     """
-    conn = sqlite3.connect('legal_dlp_uba.db')
+    db_path = os.path.join(DATA_DIR, 'legal_dlp_uba.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     # 1. Checa anomalia *antes* de registrar
@@ -188,8 +194,9 @@ def process_document_access(username, document_path):
 
 def run_main_simulation():
     # 0. Limpar banco de dados antigo, se existir
-    if os.path.exists('legal_dlp_uba.db'):
-        os.remove('legal_dlp_uba.db')
+    db_path = os.path.join(DATA_DIR, 'legal_dlp_uba.db')
+    if os.path.exists(db_path):
+        os.remove(db_path)
 
     # # 1. Criar os arquivos de teste
     # with open("caso_publico.txt", "w", encoding='utf-8') as f:

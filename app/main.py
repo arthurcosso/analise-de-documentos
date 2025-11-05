@@ -1,22 +1,35 @@
-import numpy as np
-import pickle
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Embedding, GlobalAveragePooling1D, Dense
-from tensorflow.keras.utils import to_categorical
 import os
+import sys
 
-# --- [NOVO] Importações para dividir dados e plotar ---
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-# --- [FIM NOVO] ---
+# Verificar dependências antes de importar
+try:
+    import numpy as np
+    import pickle
+    from tensorflow.keras.preprocessing.text import Tokenizer
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Embedding, GlobalAveragePooling1D, Dense
+    from tensorflow.keras.utils import to_categorical
+    from sklearn.model_selection import train_test_split
+    import matplotlib.pyplot as plt
+except ImportError as e:
+    print("="*60)
+    print("❌ ERRO: Dependências não instaladas!")
+    print("="*60)
+    print(f"\nErro: {e}")
+    print("\n📦 Para instalar as dependências, execute:")
+    print("   pip install -r requirements.txt")
+    print("\nOu instale manualmente:")
+    print("   pip install tensorflow numpy scikit-learn matplotlib")
+    print("="*60)
+    sys.exit(1)
 
 
 # --- 1. Dados de Treinamento (Carregados de Ficheiros) ---
 print("--- Iniciando Treinamento do Modelo (Lendo Ficheiros) ---")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TRAINING_DATA_DIR = os.path.join(BASE_DIR, 'training_data')
 
 texts = []
 labels = []
@@ -32,7 +45,7 @@ files_to_load = {
 print("Carregando dados dos ficheiros .txt...")
 for filename, label in files_to_load.items():
     # Crie o caminho completo para o arquivo de dados
-    file_path = os.path.join(BASE_DIR, filename)
+    file_path = os.path.join(TRAINING_DATA_DIR, filename)
 
     try:
         # --- [CORREÇÃO] Use 'file_path' em vez de 'filename' aqui ---
@@ -61,7 +74,9 @@ print(f"\nTotal de {len(texts)} exemplos de treino carregados.")
 tokenizer = Tokenizer(num_words=1000, oov_token="<UNK>")
 tokenizer.fit_on_texts(texts)
 
-TOKENIZER_PATH = os.path.join(BASE_DIR, 'tokenizer.pkl')
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+os.makedirs(MODELS_DIR, exist_ok=True)
+TOKENIZER_PATH = os.path.join(MODELS_DIR, 'tokenizer.pkl')
 
 # --- [CORREÇÃO] Use a variável TOKENIZER_PATH, não a string 'TOKENIZER_PATH' ---
 with open(TOKENIZER_PATH, 'wb') as handle:
@@ -117,7 +132,7 @@ plt.ylabel('Acurácia')
 plt.xlabel('Época')
 plt.legend(['Treino', 'Validação'], loc='upper left')
 plt.grid(True)
-plt.savefig(os.path.join(BASE_DIR, 'grafico_acuracia.png'))
+plt.savefig(os.path.join(MODELS_DIR, 'grafico_acuracia.png'))
 plt.clf() # Limpa a figura
 
 # Gráfico de Perda (Loss)
@@ -128,15 +143,15 @@ plt.ylabel('Perda (Loss)')
 plt.xlabel('Época')
 plt.legend(['Treino', 'Validação'], loc='upper left')
 plt.grid(True)
-plt.savefig(os.path.join(BASE_DIR, 'grafico_perda.png'))
+plt.savefig(os.path.join(MODELS_DIR, 'grafico_perda.png'))
 plt.clf() # Limpa a figura
 
-print(f"Gráficos 'grafico_acuracia.png' e 'grafico_perda.png' salvos em {BASE_DIR}")
+print(f"Gráficos 'grafico_acuracia.png' e 'grafico_perda.png' salvos em {MODELS_DIR}")
 # --- [FIM NOVO] ---
 
 
 # --- 5. Salvar o Modelo ---
-MODEL_PATH = os.path.join(BASE_DIR, 'text_classifier_model.keras')
+MODEL_PATH = os.path.join(MODELS_DIR, 'text_classifier_model.keras')
 model.save(MODEL_PATH)
 print(f"Modelo salvo em '{MODEL_PATH}'")
 print("--- Treinamento Finalizado ---")
